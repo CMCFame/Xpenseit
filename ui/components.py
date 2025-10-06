@@ -94,8 +94,15 @@ def get_download_bytes(df: pd.DataFrame, header: ReportHeader) -> Dict[str, byte
         df.to_excel(writer, index=False, sheet_name="Expenses")
 
         # Totals sheet
-        usd_sub = df.loc[df["Currency"].str.upper() == "USD", "Total"].fillna(0).astype(float).sum() if not df.empty else 0.0
-        mxn_sub = df.loc[df["Currency"].str.upper() == "MXN", "Total"].fillna(0).astype(float).sum() if not df.empty else 0.0
+        safe = df.copy()
+        if not safe.empty:
+            safe["Currency"] = safe["Currency"].astype(str).str.upper()
+            safe["_TotalNum"] = pd.to_numeric(safe["Total"], errors="coerce").fillna(0.0)
+            usd_sub = safe.loc[safe["Currency"] == "USD", "_TotalNum"].sum()
+            mxn_sub = safe.loc[safe["Currency"] == "MXN", "_TotalNum"].sum()
+        else:
+            usd_sub = 0.0
+            mxn_sub = 0.0
         total_usd = usd_sub + (mxn_sub / (header.fx_usd_to_mxn or 1))
         total_mxn = mxn_sub + (usd_sub * (header.fx_usd_to_mxn or 1))
         totals = pd.DataFrame([
